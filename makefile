@@ -1,29 +1,48 @@
-
 MKCWD=mkdir -p $(@D)
 
-PROJECT_NAME = test
-
 CC ?= gcc
-CFLAGS = -O2 --analyzer -Isrc/ -fsanitize=address -fsanitize=undefined
 
+SANITIZERS = 			\
+	-fsanitize=address 	\
+	-fsanitize=undefined
+
+
+CFLAGS_WARNS ?= 	\
+		-Werror 	\
+		-Wextra 	\
+		-Wall 		\
+		-Wundef 	\
+		-Wshadow 	\
+		-Wvla
+
+CFLAGS = 			\
+		-O2 		\
+		-g 		 	\
+		-std=gnu2x 	\
+		--analyzer 	\
+		-Isrc/      \
+		$(CFLAGS_WARNS)
+
+LDFLAGS=$(SANITIZERS)
+
+# some people likes to use sources/source instead of src
+PROJECT_NAME = test
 BUILD_DIR = build
+SRC_DIR = src
 
-# source files
+CFILES = $(wildcard $(SRC_DIR)/*.c) $(wildcard $(SRC_DIR)/*/*.c) $(wildcard $(SRC_DIR)/*/*/*.c)
+DFILES = $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/%.d, $(CFILES))
+OFILES = $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/%.o, $(CFILES))
 
-CFILES = $(wildcard src/*.c)
-HFILES = $(wildcard src/*.h)
-DFILES = $(patsubst src/%.c, $(BUILD_DIR)/%.d, $(CFILES))
-OFILES = $(patsubst src/%.c, $(BUILD_DIR)/%.o, $(CFILES))
-
-OUTPUT = build/$(PROJECT_NAME).elf
+OUTPUT = build/$(PROJECT_NAME)
 
 
 $(OUTPUT): $(OFILES)
 	@$(MKCWD)
 	@echo " LD [ $@ ] $<"
-	@$(CC) -o $@ $^ $(CFLAGS)
+	@$(CC) -o $@ $^ $(LDFLAGS)
 
-$(BUILD_DIR)/%.o: src/%.c 
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
 	@$(MKCWD)
 	@echo " CC [ $@ ] $<"
 	@$(CC) $(CFLAGS) -MMD -MP $< -c -o $@ 
@@ -35,5 +54,7 @@ all: $(OUTPUT)
 
 clean:
 	@rm -rf build/
+
+.PHONY: clean all run
 
 -include $(DFILES)
